@@ -164,6 +164,7 @@ while eegInlet or markerInlet:
         marker_int = int(marker[0])
         # check for stim markers     
         if marker_int in targetEvents: 
+            print('Stim detected, processing eeg data......')
             # Reset buffer when a new epoch starts
             buffer = np.zeros((samples, nbchans))
             # loop over length of empochs
