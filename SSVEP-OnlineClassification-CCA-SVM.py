@@ -24,12 +24,15 @@ Model will be saved as 'SVMclassifier_ccaSSVEP.joblib'
 # SET PARAMS -----------------------------------------
 
 # duration of the epoch
-duration = 4.2 # in seconds
+duration = 4 # in seconds
 # string to detect stim period
 trigger = 'stim'
 # stimulation frequencies
 freqs = [15, 20]
 srate = 500
+# target event markers
+targetEvents = [13, 14, 15, 16]
+nbchans = 24
 
 # ----------------------------------------------------
 
@@ -132,16 +135,9 @@ srate = eegInlet.info().nominal_srate()
 print(f'Sampling rate: {srate}')
 
 
-
-
-
-# # resolve and initialise EEG stream using LSL
-# streams = resolve_stream('type', 'EEG')  
-# inlet = StreamInlet(streams[0])
-# # retriving sampling rate from stream info
-# # srate = inlet.info().nominal_srate()
-# print(f'Sampling rate: {srate}')
-tpts = 2101
+# time points in single epoch 
+samples = int(srate * duration)
+tpts = samples
  
 # -- load the SVM-CCA trained model
 modelpath = r'/Users/abinjacob/Documents/01. Calypso/SSVEP OnlineClassify'
@@ -150,66 +146,41 @@ modelimport = op.join(modelpath,modelname)
 # create instance of the model 
 clf = load(modelimport)
 
-# Read from the streams
+
+# -- extracting the data 
 while eegInlet or markerInlet:
+    # check if eeg stream is not empty
     if eegInlet:
+        # collect the eeg data
         eeg_sample, timestamp = eegInlet.pull_sample(timeout=0.0)
-        # if eeg_sample:
-            # print(f"EEG {timestamp}: {eeg_sample}")
-
+    # check if marker stream is not empty
     if markerInlet:
+        # collect the markers
         marker, timestamp = markerInlet.pull_sample(timeout=0.0)
-        if marker:
-            print(f"Marker {timestamp}: {marker}")
+        
+    # check for markers are not empty
+    if marker:
+        # converting marker to int
+        marker_int = int(marker[0])
+        # check for stim markers     
+        if marker_int in targetEvents: 
+            # Reset buffer when a new epoch starts
+            buffer = np.zeros((samples, nbchans))
+            # loop over length of empochs
+            for i in range(samples):
+                # collect eeg data for each epochs
+                eegSample, timestamp = eegInlet.pull_sample(timeout=1.0)
+                # store the eeg data
+                buffer[i, :] = eegSample 
+            # running the svm classifier
+            result = SVMclassifier(buffer.T)
+            if marker_int in [13,15]:
+                print(f'Prediction = {result} Label = 15')
+            elif marker_int in [14,16]:
+                print(f'Prediction = {result} Label = 20')
+                
+            
 
-    time.sleep(0.01)  # Small delay to prevent overwhelming the CPU
-
-
-
-
-
-
-    
-#%% parameters
-
-# filter
-l_freq = 0.1 
-h_freq = None
-# epoching 
-tmin = -0.2
-tmax = 4
-# Events
-event_id = {'stim_L15': 13, 'stim_L20': 14, 'stim_R15': 15, 'stim_R20': 16}
-event_names = list(event_id.keys())
-foi = [15, 20, 15, 20] # Freqs of interest
-# load data 
-rootpath = r'L:\Cloud\NeuroCFN\RESEARCH PROJECT\Research Project 02\Classification\Data'
-# EEGLab file to load (.set)
-filename = 'P02_SSVEP_raw24Chans.set'
-filepath = op.join(rootpath,filename)
-# load file in mne 
-raw = mne.io.read_raw_eeglab(filepath, eog= 'auto', preload= True)
-a = raw.info
-#Preprocess the data
-# extracting events 
-events, _ = mne.events_from_annotations(raw, verbose= False)
-epochs = mne.Epochs(
-    raw, 
-    events= events, 
-    event_id= [event_id['stim_L15'], event_id['stim_L20'], event_id['stim_R15'], event_id['stim_R20']], 
-    tmin=tmin, tmax=tmax, 
-    baseline= None, 
-    preload= True,
-    event_repeated = 'merge',
-    reject={'eeg': 3.0}) # Reject epochs based on maximum peak-to-peak signal amplitude (PTP)
-
-
-#%% model predict
-
-iTrial = 1;
-eegSignal = epochs.get_data()
-epoch = eegSignal[iTrial,:,:]
-pred = SVMclassifier(epoch)
         
     
     
