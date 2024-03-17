@@ -34,7 +34,7 @@ srate = 500
 # ----------------------------------------------------
 
 
-# libraires
+# -- libraires
 import mne
 import numpy as np
 import os.path as op
@@ -49,33 +49,17 @@ from joblib import load
 from sklearn.cross_decomposition import CCA
 # for LSL communication
 from pylsl import StreamInlet, resolve_stream
+import time
 
-
-# # connecting to LSL stream 
-# # printing status message
-# print("Looking for an EEG stream...")
-# # resolve and initialise EEG stream using LSL
-# streams = resolve_stream('type', 'EEG')  
-# inlet = StreamInlet(streams[0])
-# # retriving sampling rate from stream info
-# # srate = inlet.info().nominal_srate()
-# print(f'Sampling rate: {srate}')
-tpts = 2101
- 
-# load the SVM-CCA trained model
-modelpath = r'L:\Cloud\NeuroCFN\RESEARCH PROJECT\Research Project 02\Classification\Python\Models'
-modelname = 'SVMclassifier_ccaSSVEP.joblib'
-modelimport = op.join(modelpath,modelname)
-# create instance of the model 
-clf = load(modelimport)
-
-
-# # function to 
-# def processData():
-#     global epochs
-#     sample, timestamp = inlet.pull_sample()
-#     # check if event markers indicate a stim
-#     if eventmark == 
+# -- functions
+# function to find an LSL stream
+def find_stream(stream_type, stream_name=None):
+    streams = resolve_stream('type', stream_type)
+    if stream_name:
+        for stream in streams:
+            if stream.name() == stream_name:
+                return stream
+    return streams[0] if streams else None
 
 # function to compute CCA
 def computeCCA(epoch):
@@ -116,7 +100,76 @@ def SVMclassifier(epoch):
     X = computeCCA(epoch)
     pred = clf.predict(X)
     return pred
-      
+
+
+
+# -- connecting to LSL stream
+# # eeg stream
+print("Looking for an EEG stream...")
+eegStream = find_stream('EEG', 'SSVEPstream')
+# marker stream
+print("Looking for an Marker stream...")
+markerStream = find_stream('Markers', 'Markers')
+
+# create StreamInlets if streams were found
+# eeg stream
+if eegStream:
+    eegInlet = StreamInlet(eegStream)
+    print("Connected to EEG stream.")
+else:
+    print("EEG stream not found.")
+    eegInlet = None
+# marker stream
+if markerStream:
+    markerInlet = StreamInlet(markerStream)
+    print("Connected to Marker stream.")
+else:
+    print("Marker stream not found.")
+    markerInlet = None
+
+# sampling rate of EEG
+srate = eegInlet.info().nominal_srate()
+print(f'Sampling rate: {srate}')
+
+
+
+
+
+# # resolve and initialise EEG stream using LSL
+# streams = resolve_stream('type', 'EEG')  
+# inlet = StreamInlet(streams[0])
+# # retriving sampling rate from stream info
+# # srate = inlet.info().nominal_srate()
+# print(f'Sampling rate: {srate}')
+tpts = 2101
+ 
+# -- load the SVM-CCA trained model
+modelpath = r'/Users/abinjacob/Documents/01. Calypso/SSVEP OnlineClassify'
+modelname = 'SVMclassifier_ccaSSVEP.joblib'
+modelimport = op.join(modelpath,modelname)
+# create instance of the model 
+clf = load(modelimport)
+
+# Read from the streams
+while eegInlet or markerInlet:
+    if eegInlet:
+        eeg_sample, timestamp = eegInlet.pull_sample(timeout=0.0)
+        # if eeg_sample:
+            # print(f"EEG {timestamp}: {eeg_sample}")
+
+    if markerInlet:
+        marker, timestamp = markerInlet.pull_sample(timeout=0.0)
+        if marker:
+            print(f"Marker {timestamp}: {marker}")
+
+    time.sleep(0.01)  # Small delay to prevent overwhelming the CPU
+
+
+
+
+
+
+    
 #%% parameters
 
 # filter
