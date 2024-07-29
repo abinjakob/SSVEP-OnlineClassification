@@ -194,12 +194,16 @@ while eegInlet or markerInlet:
                 
             acc = (sum(accuracy)/len(predtime))*100
             meanpretime = np.mean(predtime) 
-            print(f'Prediction Time: {timetaken:.5f}, Avg. Prediction Time: {meanpretime:.5f}, Avg. Accuracy: {acc}')
+            print(f'Prediction Time: {timetaken*1000:.2f}ms, Avg. Prediction Time: {meanpretime*1000:.2f}ms, Avg. Accuracy: {acc}, Trials: {len(predtime)}')
             
 
         
-    
-    
-
-
+#%% plotting prediction time    
+import matplotlib.pyplot as plt
+predtime_ms = [t*1000 for t in predtime]
+plt.plot(predtime_ms, 'b*')
+plt.xlabel('trials')
+plt.ylabel('prediction time [ms]')
+plt.xlim([0, len(predtime_ms)])
+plt.title('Model Online Prediction Time for Windows PC')
 
