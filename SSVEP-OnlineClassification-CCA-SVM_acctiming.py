@@ -205,5 +205,8 @@ plt.plot(predtime_ms, 'b*')
 plt.xlabel('trials')
 plt.ylabel('prediction time [ms]')
 plt.xlim([0, len(predtime_ms)])
-plt.title('Model Online Prediction Time for Windows PC')
+plt.ylim([0, 50])
+plt.title(f'Online Prediction Time in Windows PC (Avg Pred Time= {meanpretime*1000:.2f}ms)')
+
+
 
